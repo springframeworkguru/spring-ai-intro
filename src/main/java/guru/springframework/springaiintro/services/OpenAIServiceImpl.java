@@ -5,13 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import guru.springframework.springaiintro.model.Answer;
 import guru.springframework.springaiintro.model.GetCapitalRequest;
-import guru.springframework.springaiintro.model.GetCapitalResponse;
 import guru.springframework.springaiintro.model.Question;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.ai.parser.BeanOutputParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -50,19 +48,21 @@ public class OpenAIServiceImpl implements OpenAIService {
     }
 
     @Override
-    public GetCapitalResponse getCapital(GetCapitalRequest getCapitalRequest) {
-        BeanOutputParser<GetCapitalResponse> parser = new BeanOutputParser<>(GetCapitalResponse.class);
-        String format = parser.getFormat();
-        System.out.println("Format: \n" + format);
-
+    public Answer getCapital(GetCapitalRequest getCapitalRequest) {
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
-        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest.stateOrCountry(),
-                "format", format));
+        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest.stateOrCountry()));
         ChatResponse response = chatClient.call(prompt);
 
         System.out.println(response.getResult().getOutput().getContent());
+        String responseString;
+        try {
+            JsonNode jsonNode = objectMapper.readTree(response.getResult().getOutput().getContent());
+            responseString = jsonNode.get("answer").asText();
 
-        return parser.parse(response.getResult().getOutput().getContent()) ; //new Answer(responseString);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        return new Answer(responseString);
     }
 
     @Override
