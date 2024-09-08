@@ -35,7 +35,7 @@ public class OpenAIServiceImpl implements OpenAIService {
     public Answer getCapitalWithInfo(GetCapitalRequest getCapitalRequest) {
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPromptWithInfo);
         Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest.stateOrCountry()));
-        ChatResponse response = chatClient.call(prompt);
+        ChatResponse response = chatModel.call(prompt);
 
         return new Answer(response.getResult().getOutput().getContent());
     }
