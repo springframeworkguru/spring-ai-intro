@@ -1,14 +1,15 @@
 package guru.springframework.springaiintro.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import guru.springframework.springaiintro.model.*;
-import org.springframework.ai.chat.ChatClient;
-import org.springframework.ai.chat.ChatResponse;
+import guru.springframework.springaiintro.model.Answer;
+import guru.springframework.springaiintro.model.GetCapitalRequest;
+import guru.springframework.springaiintro.model.GetCapitalResponse;
+import guru.springframework.springaiintro.model.Question;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.ai.parser.BeanOutputParser;
+import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -22,10 +23,10 @@ import java.util.Map;
 @Service
 public class OpenAIServiceImpl implements OpenAIService {
 
-    private final ChatClient chatClient;
+    private final ChatModel chatModel;
 
-    public OpenAIServiceImpl(ChatClient chatClient) {
-        this.chatClient = chatClient;
+    public OpenAIServiceImpl(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @Value("classpath:templates/get-capital-prompt.st")
@@ -38,30 +39,26 @@ public class OpenAIServiceImpl implements OpenAIService {
     ObjectMapper objectMapper;
 
     @Override
-    public GetCapitalWithInfoResponse getCapitalWithInfo(GetCapitalRequest getCapitalRequest) {
-        BeanOutputParser<GetCapitalWithInfoResponse> parser = new BeanOutputParser<>(GetCapitalWithInfoResponse.class);
-        String format = parser.getFormat();
+    public Answer getCapitalWithInfo(GetCapitalRequest getCapitalRequest) {
+        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPromptWithInfo);
+        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest.stateOrCountry()));
+        ChatResponse response = chatModel.call(prompt);
 
-        PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
-        Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest.stateOrCountry(),
-                "format", format));
-        ChatResponse response = chatClient.call(prompt);
-
-        return parser.parse(response.getResult().getOutput().getContent());
+        return new Answer(response.getResult().getOutput().getContent());
     }
 
     @Override
     public GetCapitalResponse getCapital(GetCapitalRequest getCapitalRequest) {
-        BeanOutputParser<GetCapitalResponse> parser = new BeanOutputParser<>(GetCapitalResponse.class);
-        String format = parser.getFormat();
+        BeanOutputConverter<GetCapitalResponse> converter = new BeanOutputConverter<>(GetCapitalResponse.class);
+        String format = converter.getFormat();
 
         PromptTemplate promptTemplate = new PromptTemplate(getCapitalPrompt);
         Prompt prompt = promptTemplate.create(Map.of("stateOrCountry", getCapitalRequest.stateOrCountry(),
                 "format", format));
 
-        ChatResponse response = chatClient.call(prompt);
+        ChatResponse response = chatModel.call(prompt);
 
-        return parser.parse(response.getResult().getOutput().getContent());
+        return converter.convert(response.getResult().getOutput().getContent());
     }
 
     @Override
@@ -70,7 +67,7 @@ public class OpenAIServiceImpl implements OpenAIService {
 
         PromptTemplate promptTemplate = new PromptTemplate(question.question());
         Prompt prompt = promptTemplate.create();
-        ChatResponse response = chatClient.call(prompt);
+        ChatResponse response = chatModel.call(prompt);
 
         return new Answer(response.getResult().getOutput().getContent());
     }
@@ -79,7 +76,7 @@ public class OpenAIServiceImpl implements OpenAIService {
     public String getAnswer(String question) {
         PromptTemplate promptTemplate = new PromptTemplate(question);
         Prompt prompt = promptTemplate.create();
-        ChatResponse response = chatClient.call(prompt);
+        ChatResponse response = chatModel.call(prompt);
 
         return response.getResult().getOutput().getContent();
     }
