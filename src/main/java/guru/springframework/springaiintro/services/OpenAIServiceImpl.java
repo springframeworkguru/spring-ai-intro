@@ -3,8 +3,8 @@ package guru.springframework.springaiintro.services;
 import guru.springframework.springaiintro.model.Answer;
 import guru.springframework.springaiintro.model.GetCapitalRequest;
 import guru.springframework.springaiintro.model.Question;
-import org.springframework.ai.chat.ChatClient;
-import org.springframework.ai.chat.ChatResponse;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,10 +19,10 @@ import java.util.Map;
 @Service
 public class OpenAIServiceImpl implements OpenAIService {
 
-    private final ChatClient chatClient;
+    private final ChatModel chatModel;
 
-    public OpenAIServiceImpl(ChatClient chatClient) {
-        this.chatClient = chatClient;
+    public OpenAIServiceImpl(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @Value("classpath:templates/get-capital-prompt.st")
@@ -43,7 +43,7 @@ public class OpenAIServiceImpl implements OpenAIService {
 
         PromptTemplate promptTemplate = new PromptTemplate(question.question());
         Prompt prompt = promptTemplate.create();
-        ChatResponse response = chatClient.call(prompt);
+        ChatResponse response = chatModel.call(prompt);
 
         return new Answer(response.getResult().getOutput().getContent());
     }
@@ -52,7 +52,7 @@ public class OpenAIServiceImpl implements OpenAIService {
     public String getAnswer(String question) {
         PromptTemplate promptTemplate = new PromptTemplate(question);
         Prompt prompt = promptTemplate.create();
-        ChatResponse response = chatClient.call(prompt);
+        ChatResponse response = chatModel.call(prompt);
 
         return response.getResult().getOutput().getContent();
     }
